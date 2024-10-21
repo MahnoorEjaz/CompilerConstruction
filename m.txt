@@ -1,0 +1,9 @@
+float a;
+        a = 5.5;
+        int b;
+        b = a + 10;
+        Agar (b > 10) {
+            return b;
+        } Magar {
+            return 0;
+        }
