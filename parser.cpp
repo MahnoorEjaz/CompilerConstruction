@@ -89,9 +89,20 @@ public:
             }
             if (isdigit(current))
             {
-                tokens.push_back(Token{T_NUM, consumeNumber(), line});
+                string number = consumeNumber();
+                if (pos < src.size() && src[pos] == '.')
+                {
+                    pos++;
+                    number += '.' + consumeNumber();              // Append fractional part
+                    tokens.push_back(Token{T_NUM, number, line}); // Treat floats as numbers (T_NUM)
+                }
+                else
+                {
+                    tokens.push_back(Token{T_NUM, number, line}); // Integer
+                }
                 continue;
             }
+
             if (isalpha(current))
             {
                 string word = consumeWord();
@@ -214,10 +225,6 @@ private:
         {
             parseBlock();
         }
-        else if (tokens[pos].type == T_FLOAT)
-        {
-            parsefloat();
-        }
         else
         {
             cout << "Syntax error: unexpected token" << tokens[pos].value << "at line: " << tokens[pos].line << endl;
@@ -242,19 +249,23 @@ private:
         }
         else
         {
-            cout << "Syntax error: expected token type " << tokens[pos].value << "' at line " << tokens[pos].line << endl;
+            cout << "Syntax error: expected type token but found '" << tokens[pos].value << "' at line " << tokens[pos].line << endl;
             exit(1);
         }
         expect(T_ID);
+        if (tokens[pos].type == T_ASSIGN)
+        {
+            pos++;
+            parseExpression();
+        }
         expect(T_SEMICOLON);
     }
 
     void parseAssignment()
     {
-        expect(T_ID);
+        expect(T_ID);     
         expect(T_ASSIGN);
-        expect(T_SQ);
-        parseExpression();
+        parseExpression(); 
         expect(T_SEMICOLON);
     }
     void parseCharacter()
@@ -285,25 +296,23 @@ private:
         expect(T_SEMICOLON);
     }
 
-    void parseExpression()
-    {
-        parseTerm();
-        while (tokens[pos].type == T_PLUS || tokens[pos].type == T_MINUS)
-        {
-            pos++;
-            parseTerm();
-        }
-        if (tokens[pos].type == T_GT)
-        {
-            pos++;
-            parseExpression();
-        }
+    void parseExpression() {
+    parseTerm();
+    if (tokens[pos].type == T_GT) {
+        pos++;
+        parseTerm(); 
     }
+    while (tokens[pos].type == T_PLUS || tokens[pos].type == T_MINUS) {
+        pos++; 
+        parseTerm(); 
+    }
+}
+
 
     void parseTerm()
     {
         parseFactor();
-        while (tokens[pos].type == T_MUL || tokens[pos].type == T_DIV || tokens[pos].type == T_DOT)
+        while (tokens[pos].type == T_MUL || tokens[pos].type == T_DIV)
         {
             pos++;
             parseFactor();
@@ -328,16 +337,6 @@ private:
             exit(1);
         }
     }
-    void parsefloat()
-    {
-        expect(T_ID);
-
-        expect(T_ASSIGN);
-        parseTerm();
-        parseExpression();
-        expect(T_SEMICOLON);
-    }
-
     void expect(TokenType type)
     {
         if (tokens[pos].type == type)
