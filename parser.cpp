@@ -30,10 +30,19 @@ enum TokenType
     T_LBRACE,
     T_RBRACE,
     T_DOT,
-    T_SQ,
     T_SEMICOLON,
     T_GT,
     T_EOF,
+    T_TRUE,
+    T_FALSE,
+    T_WHILE,
+    T_AND,
+    T_OR,
+    T_EQ,
+    T_NEQ,
+    T_LT,
+    T_LEQ,
+    T_GEQ,
 };
 
 struct Token
@@ -61,17 +70,84 @@ public:
     string consumeNumber()
     {
         size_t start = pos;
-        while (pos < src.size() && isdigit(src[pos]))
+        while (pos<src.size()&&(isdigit(src[pos]) || src[pos]=='.'))
+        {
             pos++;
-        return src.substr(start, pos - start);
+        }
+        return src.substr(start,pos-start);
     }
 
     string consumeWord()
     {
         size_t start = pos;
-        while (pos < src.size() && isalnum(src[pos]))
+        while (pos<src.size() && isalnum(src[pos]))
             pos++;
-        return src.substr(start, pos - start);
+        return src.substr(start,pos-start);
+    }
+
+    string consumeString() //task 3 adding string
+    {
+        pos++;
+        size_t start = pos;
+        while (pos<src.size() && src[pos] !='"')
+        {
+            pos++;
+        }
+        if (pos>=src.size())
+        {
+            cout <<"syntax error of string at line "<<line<<endl;
+            exit(1);
+        }
+        string strLiteral = src.substr(start, pos-start);
+        pos++;
+        return strLiteral;
+    }
+    void consumeComment() // additional task at adding comments
+    {
+        if (src[pos]=='/' && src[pos+1]== '/') // single line comment
+        {
+            while (pos<src.size() && src[pos]!='\n')
+            {
+                pos++;
+            }
+            line++;
+        }
+        else if (src[pos]=='/' && src[pos+1]=='*') // multiline comment
+        {
+            pos+=2;
+            while (pos< src.size())
+            {
+                if (src[pos]=='*' && src[pos+1]=='/')
+                {
+                    pos+=2;
+                    return;
+                }
+                if (src[pos]=='\n')
+                    line++;
+                pos++;
+            }
+            cout << "Incorrect syntax of multiline comment at line " << line << endl;
+            exit(1);
+        }
+    }
+
+    string consumeChar() // task 3 adding char
+    {
+        pos++;
+        if (pos>=src.size() || src[pos]=='\'')
+        {
+            cout<<"syntax error of char at line: "<<line<<endl;
+            exit(1);
+        }
+        char charLiteral=src[pos];
+        pos++;
+        if (pos>=src.size() || src[pos]!='\'')
+        {
+            cout<<"syntax error of char at line: "<<line<<endl;
+            exit(1);
+        }
+        pos++;                      
+        return string(1, charLiteral);
     }
 
     vector<Token> tokenizer()
@@ -87,22 +163,33 @@ public:
                 pos++;
                 continue;
             }
-            if (isdigit(current))
+
+            if (current=='/'&& pos+1 <src.size() && (src[pos+1] =='/'||src[pos+1]=='*')) //comments symbol setup
             {
-                string number = consumeNumber();
-                if (pos < src.size() && src[pos] == '.')
-                {
-                    pos++;
-                    number += '.' + consumeNumber();              // Append fractional part
-                    tokens.push_back(Token{T_NUM, number, line}); // Treat floats as numbers (T_NUM)
-                }
-                else
-                {
-                    tokens.push_back(Token{T_NUM, number, line}); // Integer
-                }
+                consumeComment();
+                continue;
+            }
+          
+            if (current=='"') //string double qutation handling
+            {
+                string strqot = consumeString();
+                tokens.push_back(Token{T_STRING,strqot,line});
                 continue;
             }
 
+            if (current == '\'') // char single quote handling
+            {
+                string charqot = consumeChar();
+                tokens.push_back(Token{T_CHAR,charqot,line});
+                continue;
+            }
+
+            if (isdigit(current))
+            {
+                string number = consumeNumber();
+                tokens.push_back(Token{T_NUM, number, line});
+                continue;
+            }
             if (isalpha(current))
             {
                 string word = consumeWord();
@@ -124,15 +211,18 @@ public:
                     tokens.push_back(Token{T_ELSE, word, line});
                 else if (word == "return")
                     tokens.push_back(Token{T_RETURN, word, line});
+                else if (word == "ture")
+                    tokens.push_back(Token{T_TRUE, word, line});
+                else if (word == "false")
+                    tokens.push_back(Token{T_FALSE, word, line});
+                else if (word == "while")
+                    tokens.push_back(Token{T_WHILE, word, line});
                 else
                     tokens.push_back(Token{T_ID, word, line});
                 continue;
             }
             switch (current)
             {
-            case '=':
-                tokens.push_back(Token{T_ASSIGN, "=", line});
-                break;
             case '+':
                 tokens.push_back(Token{T_PLUS, "+", line});
                 break;
@@ -160,15 +250,83 @@ public:
             case ';':
                 tokens.push_back(Token{T_SEMICOLON, ";", line});
                 break;
-            case '>':
-                tokens.push_back(Token{T_GT, ">", line});
-                break;
             case '.':
                 tokens.push_back(Token{T_DOT, ".", line});
                 break;
-            case '\'':
-                tokens.push_back(Token{T_SQ, "'", line});
+            case '&':
+                if (pos+1<src.size() && src[pos+1]=='&') //task 7
+                {
+                    pos+=2;
+                    tokens.push_back(Token{T_AND, "&&", line});
+                }
+                else
+                {
+                    cout << "Unexpected character: " << current << " at line " << line << endl;
+                    exit(1);
+                }
                 break;
+            case '|':
+                if (pos+1<src.size() && src[pos+1]=='|') 
+                {
+                    pos+=2;
+                    tokens.push_back(Token{T_OR, "||", line});
+                }
+                else
+                {
+                    cout << "Unexpected character: " << current << " at line " << line << endl;
+                    exit(1);
+                }
+                break;
+            case '=':
+                if (pos+1<src.size() && src[pos+1]=='=')
+                {
+                    pos+=2;
+                    tokens.push_back(Token{T_EQ, "==", line});
+                }
+                else
+                {
+                    tokens.push_back(Token{T_ASSIGN,"=",line});
+                    pos++;
+                }
+                break;
+            case '!':
+                if (pos+1<src.size()&&src[pos+1]=='=')
+                {
+                    pos+=2;
+                    tokens.push_back(Token{T_NEQ, "!=", line});
+                }
+                else
+                {
+                    cout << "Unexpected character: " << current << " at line " << line << endl;
+                    exit(1);
+                }
+                break;
+            case '<':
+                if (pos+1<src.size() && src[pos+1]=='=')
+                {
+                    pos += 2;
+                    tokens.push_back(Token{T_LEQ,"<=",line});
+                }
+                else
+                {
+                    tokens.push_back(Token{T_LT,"<",line});
+                    pos++;
+                }
+                break;
+
+            case '>':
+                if (pos+1<src.size() && src[pos+1]=='=')
+                {
+                    pos+=2;
+                    tokens.push_back(Token{T_GEQ, ">=", line});
+                }
+                else
+                {
+                    tokens.push_back(Token{T_GT, ">", line});
+                    pos++;
+                }
+                break;
+
             default:
                 cout << "Unexpected character: " << current << "at line" << line << endl;
                 exit(1);
@@ -225,9 +383,13 @@ private:
         {
             parseBlock();
         }
+        else if (tokens[pos].type == T_WHILE)
+        {
+            parseWhileStatement();
+        }
         else
         {
-            cout << "Syntax error: unexpected token" << tokens[pos].value << "at line: " << tokens[pos].line << endl;
+            cout<<"Syntax error: unexpected token"<< tokens[pos].value<<"at line: "<<tokens[pos].line<<endl;
             exit(1);
         }
     }
@@ -235,7 +397,7 @@ private:
     void parseBlock()
     {
         expect(T_LBRACE);
-        while (tokens[pos].type != T_RBRACE && tokens[pos].type != T_EOF)
+        while (tokens[pos].type!=T_RBRACE && tokens[pos].type!=T_EOF)
         {
             parseStatement();
         }
@@ -263,9 +425,9 @@ private:
 
     void parseAssignment()
     {
-        expect(T_ID);     
+        expect(T_ID);
         expect(T_ASSIGN);
-        parseExpression(); 
+        parseExpression();
         expect(T_SEMICOLON);
     }
     void parseCharacter()
@@ -296,18 +458,25 @@ private:
         expect(T_SEMICOLON);
     }
 
-    void parseExpression() {
-    parseTerm();
-    if (tokens[pos].type == T_GT) {
-        pos++;
-        parseTerm(); 
+    void parseExpression()
+    {
+        parseTerm();
+        while (tokens[pos].type == T_GT || tokens[pos].type == T_LT || tokens[pos].type == T_GEQ || tokens[pos].type == T_LEQ)
+        {
+            pos++;
+            parseTerm(); 
+        }
+        while (tokens[pos].type == T_EQ || tokens[pos].type == T_NEQ || tokens[pos].type == T_AND || tokens[pos].type == T_OR)
+        {
+            pos++;    
+            parseTerm();
+        }
+        while (tokens[pos].type == T_PLUS || tokens[pos].type == T_MINUS)
+        {
+            pos++;
+            parseTerm();
+        }
     }
-    while (tokens[pos].type == T_PLUS || tokens[pos].type == T_MINUS) {
-        pos++; 
-        parseTerm(); 
-    }
-}
-
 
     void parseTerm()
     {
@@ -321,7 +490,11 @@ private:
 
     void parseFactor()
     {
-        if (tokens[pos].type == T_NUM || tokens[pos].type == T_ID)
+        if (tokens[pos].type == T_NUM || tokens[pos].type == T_ID || tokens[pos].type == T_TRUE || tokens[pos].type == T_FALSE)
+        {
+            pos++;
+        }
+        else if (tokens[pos].type == T_STRING || tokens[pos].type == T_CHAR)
         {
             pos++;
         }
@@ -337,6 +510,15 @@ private:
             exit(1);
         }
     }
+    void parseWhileStatement()
+    {
+        expect(T_WHILE);  
+        expect(T_LPAREN); 
+        parseExpression(); 
+        expect(T_RPAREN); 
+        parseStatement();  
+    }
+
     void expect(TokenType type)
     {
         if (tokens[pos].type == type)
