@@ -6,7 +6,7 @@ b = a + 10;
 bool x ;
 bool y = false;
 Agar (b > 10) {
-    return b
+    return b;
 } Magar {
     return 0;
 }
