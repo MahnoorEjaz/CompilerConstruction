@@ -1,12 +1,18 @@
-float a;
+int a;
 a = 5.5;
 char b;
-b = 'a';
+double w = 34529564;
+w = 45322;
 b = a + 10;
 bool x ;
-bool y = false;
-Agar (b > 10) {
+//this is the code
+Agar (b == 10) {
     return b;
-} Magar {
-    return 0;
+} 
+Magar {
+    b = 6;
+}
+while ( a <= 2 )
+{
+
 }
